@@ -23,13 +23,19 @@
 #############################################################################################################################################################################
 
 import typer
-from nbs_cli.commands import build
+from nbs_cli import commands
 
 app = typer.Typer(add_completion=False)
+# <---
+# --->
+app.command("build")(commands.build)
 
-# -- Register subcommands.
-
-app.command()(build)
+@app.command("hello")
+def hello_world():
+    """
+    A simple test command that prints 'Hello World'.
+    """
+    print("Hello World")
 
 def main():
     app()
