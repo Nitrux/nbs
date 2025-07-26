@@ -123,7 +123,7 @@ def build_probe_tasks(repos, pkg_name, quiet):
         if not (distro and release and arch):
             if not quiet:
                 console.print(
-                    f"[red]⛔ Error: Missing required repo keys for [bold]{pkg_name}[/] → {repo}"
+                    f"[red]⛔ Error:[/red] Missing required repo keys for [bold]{pkg_name} → {repo}[/bold]"
                 )
             continue
 
@@ -131,7 +131,7 @@ def build_probe_tasks(repos, pkg_name, quiet):
         if not mirror_list:
             if not quiet:
                 console.print(
-                    f"[yellow]⚠️ Skipping unknown distro:[/] [bold]{distro}[/]"
+                    f"[yellow]🚧 Skipping[/yellow] unknown distro: [bold]{distro}[/bold]"
                 )
             continue
 
@@ -233,11 +233,11 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
 
     if not quiet and log_lock:
         with log_lock:
-            console.print(f"[cyan]📦 Package:[/] {pkg_name}")
-            console.print(f"[cyan]🔹 Version:[/] {best['version_str']}")
-            console.print(f"[cyan]🔹 Source:[/]  {best['source']}")
+            console.print(f"[cyan]📦 Package:[/cyan] {pkg_name}")
+            console.print(f"[cyan]🔹 Version:[/cyan] {best['version_str']}")
+            console.print(f"[cyan]🔹 Source:[/cyan]  {best['source']}")
             console.print("")
-            console.print(f"[green]📥 Downloading:[/] {pkg_name} from: {best['url']}")
+            console.print(f"[green]📥 Downloading:[/green] {pkg_name} from: {best['url']}")
 
     download_errors = []
 
@@ -254,7 +254,7 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
         path = candidate["path"]
         try:
             if not quiet:
-                console.print(f"[yellow]🔁 Retrying download for:[/] {pkg_name} from: {url}")
+                console.print(f"[yellow]🔁 Retrying download for:[/yellow] {pkg_name} from: {url}")
             return download_file(url, path, quiet=quiet)
         except RuntimeError as e:
             download_errors.append(f"{pkg_name} (retry): {e} ← {url}")
@@ -343,7 +343,7 @@ def download_file(url, destination, quiet=True):
                     f.write(chunk)
 
         if not quiet:
-            console.print(f"    ↪︎ 🔸[green]Saved to:[/] {destination}")
+            console.print(f"    ↪︎ 🔸[green]Saved to:[/green] {destination}")
             console.print("")
 
         return destination
@@ -371,21 +371,21 @@ def print_grouped_logs(logs):
     unhandled = [msg for msg in logs if msg not in fetch_errors + decompress_errors + no_metadata]
 
     if fetch_errors:
-        console.print("\n[bold red]🚧 Failed to Fetch Metadata:[/]")
+        console.print("\n[bold red]🚧 Failed to Fetch Metadata:[/bold red]")
         for line in fetch_errors:
             console.print(f"  {line}")
 
     if decompress_errors:
-        console.print("\n[bold red]📦 Failed to Decompress Metadata:[/]")
+        console.print("\n[bold red]📦 Failed to Decompress Metadata:[/bold red]")
         for line in decompress_errors:
             console.print(f"  {line}")
 
     if no_metadata:
-        console.print("\n[bold yellow]📭 No Metadata Found:[/]")
+        console.print("\n[bold yellow]📭 No Metadata Found:[/bold yellow]")
         for line in no_metadata:
             console.print(f"  {line}")
 
     if unhandled:
-        console.print("\n[bold magenta]❓ Unhandled Errors:[/]")
+        console.print("\n[bold magenta]❓ Unhandled Errors:[/bold magenta]")
         for line in unhandled:
             console.print(f"  {line}")

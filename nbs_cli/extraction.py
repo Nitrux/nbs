@@ -48,7 +48,7 @@ def extract_deb(deb_path, package_name, quiet=True):
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     if not quiet:
-        console.print(f"[bold cyan]🗄️ Extracting[/]: {deb_path}...")
+        console.print(f"[bold cyan]🗄️ Extracting[/bold cyan]: {deb_path}...")
 
     try:
         subprocess.run(["ar", "x", deb_path], cwd=temp_dir, check=True)
@@ -56,7 +56,7 @@ def extract_deb(deb_path, package_name, quiet=True):
         archive_files = list(temp_dir.glob("data.tar.*"))
         if not archive_files:
             if not quiet:
-                console.print(f"[red]⛔ Error:[/] No valid data archive found in {deb_path}.")
+                console.print(f"[red]⛔ Error:[/red] No valid data archive found in {deb_path}.")
             return
 
         data_archive = archive_files[0]
@@ -76,11 +76,11 @@ def extract_deb(deb_path, package_name, quiet=True):
             subprocess.run(["tar", "xf", str(decompressed_archive), "-C", str(rootfs_dir)], check=True)
         else:
             if not quiet:
-                console.print(f"[red]⛔ Error:[/] Unsupported archive format in {deb_path}.")
+                console.print(f"[red]⛔ Error:[/red] Unsupported archive format in {deb_path}.")
             return
 
         if not quiet:
-            console.print(f"    ↪︎ 🔸[green]Extracted successfully[/].")
+            console.print(f"    ↪︎ 🔸[green]Extracted successfully[/green].")
 
         # Ensure library directory exists
         lib_dir = rootfs_dir / "usr/lib/"
@@ -88,7 +88,7 @@ def extract_deb(deb_path, package_name, quiet=True):
 
     except subprocess.CalledProcessError as e:
         if not quiet:
-            console.print(f"[red]⛔ Error:[/] Extraction failed for {deb_path}: {e}")
+            console.print(f"[red]⛔ Error:[/red] Extraction failed for {deb_path}: {e}")
         return
 
     finally:
