@@ -24,6 +24,7 @@
 
 from pathlib import Path
 import shutil
+from threading import Lock
 
 from nbs_cli.fetcher import get_latest_deb
 from nbs_cli.extraction import extract_deb
@@ -37,6 +38,7 @@ def create_base_system(package_list, repos, cache_name="bootstrap", rootfs_path=
     """
     cache_dir = Path.home() / ".cache/nbs-cli" / cache_name
     rootfs_path = Path(rootfs_path)
+    log_lock = Lock()
 
     if rootfs_path.exists():
         print(f"🧹 Cleaning previous rootfs at {rootfs_path}")
@@ -53,7 +55,7 @@ def create_base_system(package_list, repos, cache_name="bootstrap", rootfs_path=
     for pkg in package_list:
         print(f"📦 Processing package: {pkg}")
         try:
-            deb_path = get_latest_deb(pkg, repos, cache_name, log_lock=None, quiet=False)
+            deb_path = get_latest_deb(pkg, repos, cache_name, log_lock=log_lock, quiet=False)
             if deb_path:
                 extract_deb(deb_path, pkg, quiet=False)
                 summary["success"].append(pkg)
