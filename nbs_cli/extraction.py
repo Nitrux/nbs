@@ -82,7 +82,6 @@ def extract_deb(deb_path, package_name, quiet=True):
         if not quiet:
             console.print(f"    ↪︎ 🔸[green]Extracted successfully[/green].")
 
-        # Ensure library directory exists
         lib_dir = rootfs_dir / "usr/lib/"
         lib_dir.mkdir(parents=True, exist_ok=True)
 

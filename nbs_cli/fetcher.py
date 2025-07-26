@@ -209,7 +209,7 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
 
     if not quiet:
         for group, label in [(fetch_failures, "[red]⛔ Fetch failed"),
-                             (no_metadata, "[yellow]⚠️ No metadata"),
+                             (no_metadata, "[yellow]🚧 No metadata"),
                              (mirror_logs, "[dim]ℹ️ Mirror log")]:
             if group:
                 console.print("\n".join(f"{label}: {line}" for line in group))
@@ -237,7 +237,7 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
             console.print(f"[cyan]🔹 Version:[/cyan] {best['version_str']}")
             console.print(f"[cyan]🔹 Source:[/cyan]  {best['source']}")
             console.print("")
-            console.print(f"[green]📥 Downloading:[/green] {pkg_name} from: {best['url']}")
+            console.print(f"[green]📥 Downloading:[/green] [bold]{pkg_name}[/bold] from: {best['url']}")
 
     download_errors = []
 
@@ -261,7 +261,7 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
 
     if not quiet and download_errors and log_lock:
         with log_lock:
-            console.print("\n".join(f"[red]⚠️ {msg}" for msg in download_errors))
+            console.print("\n".join(f"[red]🚧 {msg}" for msg in download_errors))
 
     raise RuntimeError(f"[red]⛔ All mirrors failed to download: {pkg_name}.")
 
@@ -360,7 +360,7 @@ def download_file(url, destination, quiet=True):
                 raise RuntimeError("🌐 DNS resolution failed")
             raise RuntimeError("🔌 Connection failed")
         else:
-            raise RuntimeError(f"⚠️ {e.__class__.__name__}")
+            raise RuntimeError(f"🚧 {e.__class__.__name__}")
 
 
 def print_grouped_logs(logs):
