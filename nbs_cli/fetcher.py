@@ -233,10 +233,11 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
 
     if not quiet and log_lock:
         with log_lock:
-            console.print(f"[bold]📦 Package:[/] {pkg_name}")
+            console.print(f"[cyan]📦 Package:[/] {pkg_name}")
             console.print(f"[cyan]🔹 Version:[/] {best['version_str']}")
             console.print(f"[cyan]🔹 Source:[/]  {best['source']}")
-            console.print(f"\n[green]📥 Downloading:[/] {pkg_name} from: {best['url']}\n")
+            console.print("")
+            console.print(f"[green]📥 Downloading:[/] {pkg_name} from: {best['url']}")
 
     download_errors = []
 
@@ -342,7 +343,7 @@ def download_file(url, destination, quiet=True):
                     f.write(chunk)
 
         if not quiet:
-            console.print(f"🎉 [green]Successfully downloaded:[/] {destination}")
+            console.print(f"    ↪︎ 🔸[green]Saved to:[/] {destination}")
             console.print("")
 
         return destination

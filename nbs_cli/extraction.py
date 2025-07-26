@@ -29,7 +29,6 @@ from rich.console import Console
 import typer
 # <---
 # --->
-
 console = Console()
 
 # -- Extract .deb files into the correct package directory.
@@ -49,7 +48,7 @@ def extract_deb(deb_path, package_name, quiet=True):
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     if not quiet:
-        console.print(f"[bold cyan]🗄️ Extracting[/] {deb_path}...")
+        console.print(f"[bold cyan]🗄️ Extracting[/]: {deb_path}...")
 
     try:
         subprocess.run(["ar", "x", deb_path], cwd=temp_dir, check=True)
@@ -81,8 +80,7 @@ def extract_deb(deb_path, package_name, quiet=True):
             return
 
         if not quiet:
-            console.print(f"    [green]↪︎ 🔸 Extracted[/] successfully[/].")
-            console.print("")
+            console.print(f"    ↪︎ 🔸[green]Extracted successfully[/].")
 
         # Ensure library directory exists
         lib_dir = rootfs_dir / "usr/lib/"

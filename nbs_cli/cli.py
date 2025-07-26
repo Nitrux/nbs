@@ -24,7 +24,8 @@
 
 import typer
 from nbs_cli import commands
-
+# <---
+# --->
 app = typer.Typer(add_completion=False)
 # <---
 # --->

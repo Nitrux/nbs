@@ -26,6 +26,7 @@ import typer
 import yaml
 from pathlib import Path
 from rich.console import Console
+from rich.markup import escape
 
 from nbs_cli.orchestrator import create_base_system
 # <---
@@ -56,11 +57,15 @@ def build(config: Path = typer.Argument(..., exists=True, help="Path to the YAML
     summary = create_base_system(packages, repos)
 
     console.rule("[bold blue]📊 Build Summary")
-    typer.secho(f"✅ Success: {summary['success']}", fg=typer.colors.GREEN)
+    success_msg = escape(str(summary['success']))
+    failed_msg = escape(str(summary['failed']))
+    skipped_msg = escape(str(summary['skipped']))
+
+    typer.secho(f"✅ Success: {success_msg}", fg=typer.colors.GREEN)
     console.print("")
-    typer.secho(f"⛔ Failed: {summary['failed']}", fg=typer.colors.RED)
+    typer.secho(f"⛔ Failed: {failed_msg}", fg=typer.colors.RED)
     console.print("")
-    typer.secho(f"⚠ Skipped: {summary['skipped']}", fg=typer.colors.YELLOW)
+    typer.secho(f"🚧 Skipped: {skipped_msg}", fg=typer.colors.YELLOW)
     console.print("")
 
 

@@ -58,7 +58,6 @@ def create_base_system(package_list, repos, cache_name="bootstrap", rootfs_path=
     }
 
     for pkg in package_list:
-        console.print(f"📦 Processing package: [bold]{pkg}[/bold]")
         try:
             deb_path = get_latest_deb(pkg, repos, cache_name, log_lock=log_lock, quiet=False)
             if deb_path:
@@ -68,7 +67,7 @@ def create_base_system(package_list, repos, cache_name="bootstrap", rootfs_path=
                 console.print(f"[yellow]⚠️ Skipped (not found): {pkg}[/yellow]")
                 summary["skipped"].append(pkg)
         except Exception as e:
-            console.print(f"[red]⛔ Error[/red] processing: {pkg} {escape(str(e))}")
+            console.print(f"    ↪︎ [red]⛔ Error processing: {pkg} {escape(str(e))}[/red]")
             summary["failed"].append(pkg)
 
         console.print("")
