@@ -34,10 +34,11 @@ from threading import Lock
 
 import requests
 from debian import debian_support
-from tqdm import tqdm
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from rich.console import Console
+import typer
 
 from .utensils import cleanup_cache
 # <---
@@ -102,6 +103,8 @@ def get_mirrors_for_distro(distro):
     }.get(distro, None)
 
 
+console = Console()
+
 def build_probe_tasks(repos, pkg_name, quiet):
     """
     Build probe tasks that randomly distribute mirrors to balance load,
@@ -119,21 +122,21 @@ def build_probe_tasks(repos, pkg_name, quiet):
 
         if not (distro and release and arch):
             if not quiet:
-                print(f"❌ Error: Missing required repo keys for {pkg_name}: {repo}")
+                console.print(
+                    f"[red]⛔ Error: Missing required repo keys for [bold]{pkg_name}[/] → {repo}"
+                )
             continue
 
         mirror_list = get_mirrors_for_distro(distro)
         if not mirror_list:
             if not quiet:
-                print(f"⚠️ Skipping unknown distro: {distro}")
+                console.print(
+                    f"[yellow]⚠️ Skipping unknown distro:[/] [bold]{distro}[/]"
+                )
             continue
-
-        # -- Randomize the mirror list to spread load across mirrors.
 
         mirror_list = mirror_list[:]
         random.shuffle(mirror_list)
-
-        # -- Only add one mirror per component at a time to reduce load.
 
         for component in components:
             for mirror in mirror_list:
@@ -151,7 +154,7 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
     deb_dir.mkdir(parents=True, exist_ok=True)
 
     if not repos:
-        raise RuntimeError(f"❌ Error: No valid repositories provided for {pkg_name}.")
+        raise RuntimeError(f"[red]⛔ No valid repositories provided for {pkg_name}.")
 
     probe_tasks = build_probe_tasks(repos, pkg_name, quiet)
 
@@ -199,21 +202,20 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
                     else:
                         mirror_logs.append(status_msg)
                 elif exception and not quiet:
-                    mirror_logs.append(f"⛔ Unhandled error for: {pkg_name} from: {mirror} [{component}]: {exception}")
+                    mirror_logs.append(f"⛔ Unhandled error for {pkg_name} from {mirror} [{component}]: {exception}")
             except Exception as e:
                 if not quiet:
-                    mirror_logs.append(f"⛔ Unexpected error for: {pkg_name}: {e}")
+                    mirror_logs.append(f"⛔ Unexpected error for {pkg_name}: {e}")
 
     if not quiet:
-        if fetch_failures:
-            tqdm.write("\n" + "\n".join(f"        {msg}" for msg in fetch_failures))
-        if no_metadata:
-            tqdm.write("\n" + "\n".join(f"        {msg}" for msg in no_metadata))
-        if mirror_logs:
-            tqdm.write("\n" + "\n".join(f"        {msg}" for msg in mirror_logs))
+        for group, label in [(fetch_failures, "[red]⛔ Fetch failed"),
+                             (no_metadata, "[yellow]⚠️ No metadata"),
+                             (mirror_logs, "[dim]ℹ️ Mirror log")]:
+            if group:
+                console.print("\n".join(f"{label}: {line}" for line in group))
 
     if not candidates:
-        raise RuntimeError(f"Unable to find '{pkg_name}' in any repository after probing {len(probe_tasks)} mirror/component pairs.")
+        raise RuntimeError(f"[red]⛔ Unable to find '{pkg_name}' in any repository after probing {len(probe_tasks)} mirrors/components.")
 
     version_groups = defaultdict(list)
     for c in candidates:
@@ -229,13 +231,12 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
 
     best = shuffled_candidates[0]
 
-    if not quiet:
+    if not quiet and log_lock:
         with log_lock:
-            tqdm.write("")
-            tqdm.write(f"        📦 Package: {pkg_name}")
-            tqdm.write(f"        🔹 Version: {best['version_str']}")
-            tqdm.write(f"        🔹 Source:  {best['source']}\n")
-            tqdm.write(f"        📥 Downloading: {pkg_name} from: {best['url']}...\n")
+            console.print(f"[bold]📦 Package:[/] {pkg_name}")
+            console.print(f"[cyan]🔹 Version:[/] {best['version_str']}")
+            console.print(f"[cyan]🔹 Source:[/]  {best['source']}")
+            console.print(f"\n[green]📥 Downloading:[/] {pkg_name} from: {best['url']}\n")
 
     download_errors = []
 
@@ -252,16 +253,16 @@ def get_latest_deb(pkg_name, repos, package_name, log_lock, quiet=True):
         path = candidate["path"]
         try:
             if not quiet:
-                tqdm.write(f"        🔁 Retrying download for: {pkg_name} from: {url}")
+                console.print(f"[yellow]🔁 Retrying download for:[/] {pkg_name} from: {url}")
             return download_file(url, path, quiet=quiet)
         except RuntimeError as e:
             download_errors.append(f"{pkg_name} (retry): {e} ← {url}")
 
     if not quiet and download_errors and log_lock:
         with log_lock:
-            tqdm.write("\n" + "\n".join(f"        ⚠️ {msg}" for msg in download_errors) + "\n")
+            console.print("\n".join(f"[red]⚠️ {msg}" for msg in download_errors))
 
-    raise RuntimeError(f"⛔ All mirrors failed to download: {pkg_name}.")
+    raise RuntimeError(f"[red]⛔ All mirrors failed to download: {pkg_name}.")
 
 
 def fetch_package_metadata(mirror, release, arch, pkg_name, component="main", retries=3):
@@ -283,7 +284,7 @@ def fetch_package_metadata(mirror, release, arch, pkg_name, component="main", re
                         lines = f.readlines()
                         metadata_cache[cache_key] = lines
                 except (OSError, EOFError, gzip.BadGzipFile) as gz_err:
-                    return None, f"❌ Error: Failed to decompress metadata from {packages_url}: {gz_err}"
+                    return None, f"⛔ Failed to decompress metadata from {packages_url}: {gz_err}"
 
             current_package = None
             filename = None
@@ -293,20 +294,20 @@ def fetch_package_metadata(mirror, release, arch, pkg_name, component="main", re
                 line = line.strip()
 
                 if line.startswith("Package: "):
-                    current_package = line.split("Package: ")[1]
+                    current_package = line.split("Package: ", 1)[1]
                     filename = None
                     version = None
 
                 elif line.startswith("Version: ") and current_package == pkg_name:
-                    version = line.split("Version: ")[1]
+                    version = line.split("Version: ", 1)[1]
 
                 elif line.startswith("Filename: ") and current_package == pkg_name:
-                    filename = line.split("Filename: ")[1]
+                    filename = line.split("Filename: ", 1)[1]
 
                 if current_package == pkg_name and filename and version:
                     return (filename, version), None
 
-            return None, f"⛔ No metadata for: {pkg_name} from: {mirror} [{component}]"
+            return None, f"⛔ No metadata for '{pkg_name}' from: {mirror} [{component}]"
 
         except requests.exceptions.RequestException as e:
             if attempt < retries:
@@ -314,18 +315,18 @@ def fetch_package_metadata(mirror, release, arch, pkg_name, component="main", re
                 continue
 
             if isinstance(e, requests.exceptions.Timeout):
-                reason = "⌛ Timeout"
+                reason = "Timeout"
             elif isinstance(e, requests.exceptions.ConnectionError):
-                reason = "🔌 Connection error"
+                reason = "Connection error"
             elif isinstance(e, requests.exceptions.HTTPError) and e.response is not None:
                 reason = f"HTTP {e.response.status_code}"
             else:
                 reason = e.__class__.__name__
 
             mirror_host = urlparse(packages_url).hostname
-            return None, f"⭢ 🚧 Unable to fetch metadata from: {mirror_host}: {reason} (after {retries} attempts)"
+            return None, f"🚧 Failed to fetch metadata from: {mirror_host}: {reason} (after {retries} attempts)"
 
-    return None, f"⭢ 🚧 Unexpected error for {pkg_name} from {mirror} [{component}]"
+    return None, f"🚧 Unexpected error for '{pkg_name}' from {mirror} [{component}]"
 
 
 def download_file(url, destination, quiet=True):
@@ -333,7 +334,7 @@ def download_file(url, destination, quiet=True):
         response = session.get(url, timeout=20, stream=True)
         response.raise_for_status()
 
-        dl_chunk_size = 1024 * 1024
+        dl_chunk_size = 1024 * 1024  # 1MB
 
         with open(destination, "wb") as f:
             for chunk in response.iter_content(chunk_size=dl_chunk_size):
@@ -341,7 +342,8 @@ def download_file(url, destination, quiet=True):
                     f.write(chunk)
 
         if not quiet:
-            tqdm.write(f"        🎉 Successfully downloaded: {destination}\n")
+            console.print(f"🎉 [green]Successfully downloaded:[/] {destination}")
+            console.print("")
 
         return destination
 
@@ -368,13 +370,21 @@ def print_grouped_logs(logs):
     unhandled = [msg for msg in logs if msg not in fetch_errors + decompress_errors + no_metadata]
 
     if fetch_errors:
-        print("\n" + "\n".join(f" {line}" for line in fetch_errors))
+        console.print("\n[bold red]🚧 Failed to Fetch Metadata:[/]")
+        for line in fetch_errors:
+            console.print(f"  {line}")
 
     if decompress_errors:
-        print("\n" + "\n".join(f" {line}" for line in decompress_errors))
+        console.print("\n[bold red]📦 Failed to Decompress Metadata:[/]")
+        for line in decompress_errors:
+            console.print(f"  {line}")
 
     if no_metadata:
-        print("\n" + "\n".join(f" {line}" for line in no_metadata))
+        console.print("\n[bold yellow]📭 No Metadata Found:[/]")
+        for line in no_metadata:
+            console.print(f"  {line}")
 
     if unhandled:
-        print("\n" + "\n".join(f" {line}" for line in unhandled))
+        console.print("\n[bold magenta]❓ Unhandled Errors:[/]")
+        for line in unhandled:
+            console.print(f"  {line}")

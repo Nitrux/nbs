@@ -26,35 +26,44 @@ import typer
 import yaml
 from pathlib import Path
 from rich.console import Console
+
 from nbs_cli.orchestrator import create_base_system
 # <---
 # --->
 console = Console()
 
-def build(
-    config: Path = typer.Argument(..., exists=True, help="Path to the YAML config file")
-):
-    """🔧 Build a base root filesystem from a package list and repositories."""
-    console.rule("[bold green]🛠️ Nitrux Bootstrap System")
+def build(config: Path = typer.Argument(..., exists=True, help="Path to the YAML config file")):
+    """
+    🔧 Build a base root filesystem from a package list and repositories.
+    """
+    console.rule("[bold green]🧰 Nitrux Bootstrap System")
 
     try:
         with config.open() as f:
             data = yaml.safe_load(f)
             repos = data["buildinfo"]["distrorepo"]
-            packages = data.get("base_packages", [])
+            packages = data.get("base", [])
             if not packages:
-                console.print("[red]❌ No base packages defined.")
+                typer.secho("⛔ No base packages defined.", fg=typer.colors.RED)
                 raise typer.Exit(1)
     except yaml.YAMLError as e:
-        console.print(f"[red]❌ YAML parsing failed: {e}")
+        typer.secho(f"⛔ YAML parsing failed: {e}", fg=typer.colors.RED)
         raise typer.Exit(1)
     except KeyError:
-        console.print("[red]❌ Invalid YAML: Missing 'buildinfo.distrorepo'")
+        typer.secho("⛔ Invalid YAML: Missing 'buildinfo.distrorepo'", fg=typer.colors.RED)
         raise typer.Exit(1)
 
     summary = create_base_system(packages, repos)
 
     console.rule("[bold blue]📊 Build Summary")
-    console.print(f"[green]✅ Success: {summary['success']}")
-    console.print(f"[red]❌ Failed: {summary['failed']}")
-    console.print(f"[yellow]⚠️ Skipped: {summary['skipped']}")
+    typer.secho(f"✅ Success: {summary['success']}", fg=typer.colors.GREEN)
+    console.print("")
+    typer.secho(f"⛔ Failed: {summary['failed']}", fg=typer.colors.RED)
+    console.print("")
+    typer.secho(f"⚠ Skipped: {summary['skipped']}", fg=typer.colors.YELLOW)
+    console.print("")
+
+
+def hello():
+    """Simple hello command to demonstrate multi-command interface."""
+    typer.echo("Hello, world!")

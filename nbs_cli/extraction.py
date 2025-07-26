@@ -25,8 +25,13 @@
 import shutil
 import subprocess
 from pathlib import Path
+from rich.console import Console
+import typer
 # <---
 # --->
+
+console = Console()
+
 # -- Extract .deb files into the correct package directory.
 
 def extract_deb(deb_path, package_name, quiet=True):
@@ -44,14 +49,15 @@ def extract_deb(deb_path, package_name, quiet=True):
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     if not quiet:
-        print(f"🗄️ Extracting {deb_path}...")
+        console.print(f"[bold cyan]🗄️ Extracting[/] {deb_path}...")
 
     try:
         subprocess.run(["ar", "x", deb_path], cwd=temp_dir, check=True)
 
         archive_files = list(temp_dir.glob("data.tar.*"))
         if not archive_files:
-            print(f"❌ Error: No valid data archive found in {deb_path}.")
+            if not quiet:
+                console.print(f"[red]⛔ Error:[/] No valid data archive found in {deb_path}.")
             return
 
         data_archive = archive_files[0]
@@ -70,19 +76,21 @@ def extract_deb(deb_path, package_name, quiet=True):
             )
             subprocess.run(["tar", "xf", str(decompressed_archive), "-C", str(rootfs_dir)], check=True)
         else:
-            print(f"❌ Error: Unsupported archive format in {deb_path}.")
+            if not quiet:
+                console.print(f"[red]⛔ Error:[/] Unsupported archive format in {deb_path}.")
             return
 
         if not quiet:
-            print(f"🗃️ Extracted {deb_path} successfully.")
+            console.print(f"    [green]↪︎ 🔸 Extracted[/] successfully[/].")
+            console.print("")
 
-        # -- Ensure that libraries are correctly moved without overwriting existing ones.
-
+        # Ensure library directory exists
         lib_dir = rootfs_dir / "usr/lib/"
         lib_dir.mkdir(parents=True, exist_ok=True)
 
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error: Extraction failed for {deb_path}. {e}")
+        if not quiet:
+            console.print(f"[red]⛔ Error:[/] Extraction failed for {deb_path}: {e}")
         return
 
     finally:

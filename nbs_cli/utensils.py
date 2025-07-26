@@ -22,36 +22,30 @@
 #    STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.   #
 #############################################################################################################################################################################
 
-import os
-import platform
-import random
-import re
 import shutil
-import sys
-import time
 from pathlib import Path
-from shutil import get_terminal_size
-from concurrent.futures import ThreadPoolExecutor, as_completed, wait, FIRST_COMPLETED
-from threading import Lock
 
-import requests
-from tqdm import tqdm
+import typer
 # <---
 # --->
 # -- Define base directories.
 
 cache_dir = Path.home() / ".cache/nbs-cli"
 
-def cleanup_cache(package_name=None):
+def cleanup_cache(package_name: str | None = None, quiet=False):
     """Remove the cache directory for a specific package or skip full cache cleanup."""
+    console = typer.get_console()
 
     if package_name:
         target_dir = cache_dir / package_name
 
         if target_dir.exists():
-            print(f"\n🧹 Cleaning up build cache for: {package_name}...\n")
+            if not quiet:
+                console.print(f"\n🧹 [bold]Cleaning up build cache for:[/] {package_name}\n")
             shutil.rmtree(target_dir, ignore_errors=True)
         else:
-            print(f"\n🚨 Warning: No build cache found for: {package_name}. Skipping cleanup.\n")
+            if not quiet:
+                console.print(f"\n🚨 [yellow]Warning:[/] No build cache found for: {package_name}. Skipping cleanup.\n")
     else:
-        print("\nℹ️ Skipping full cache cleanup. Only removing package-specific cache.")
+        if not quiet:
+            console.print("\nℹ️ [dim]Skipping full cache cleanup. Only removing package-specific cache.[/]")

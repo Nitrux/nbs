@@ -22,6 +22,8 @@
 #    STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.   #
 #############################################################################################################################################################################
 
+from rich.console import Console
+from rich.markup import escape
 from pathlib import Path
 import shutil
 from threading import Lock
@@ -31,6 +33,8 @@ from nbs_cli.extraction import extract_deb
 from nbs_cli.utensils import cleanup_cache
 # <---
 # --->
+console = Console()
+
 def create_base_system(package_list, repos, cache_name="bootstrap", rootfs_path=Path("build/rootfs")):
     """
     Download and extract each package to its own cache dir, then merge into rootfs.
@@ -41,7 +45,8 @@ def create_base_system(package_list, repos, cache_name="bootstrap", rootfs_path=
     log_lock = Lock()
 
     if rootfs_path.exists():
-        print(f"🧹 Cleaning previous rootfs at {rootfs_path}")
+        console.print(f"🧹 Cleaning previous rootfs at [bold]{rootfs_path}[/bold]")
+        console.print("")
         shutil.rmtree(rootfs_path)
 
     rootfs_path.mkdir(parents=True, exist_ok=True)
@@ -53,20 +58,20 @@ def create_base_system(package_list, repos, cache_name="bootstrap", rootfs_path=
     }
 
     for pkg in package_list:
-        print(f"📦 Processing package: {pkg}")
+        console.print(f"📦 Processing package: [bold]{pkg}[/bold]")
         try:
             deb_path = get_latest_deb(pkg, repos, cache_name, log_lock=log_lock, quiet=False)
             if deb_path:
                 extract_deb(deb_path, pkg, quiet=False)
                 summary["success"].append(pkg)
             else:
-                print(f"⚠️  Skipped (not found): {pkg}")
+                console.print(f"[yellow]⚠️ Skipped (not found): {pkg}[/yellow]")
                 summary["skipped"].append(pkg)
         except Exception as e:
-            print(f"❌ Error processing {pkg}: {e}")
+            console.print(f"[red]⛔ Error[/red] processing: {pkg} {escape(str(e))}")
             summary["failed"].append(pkg)
 
-    # -- Merge all per-package bootstrap dirs into final rootfs.
+        console.print("")
 
     merge_package_dirs_to_rootfs(cache_dir, rootfs_path)
 
@@ -77,11 +82,13 @@ def merge_package_dirs_to_rootfs(cache_dir: Path, rootfs_path: Path):
     """
     Copy all files from ~/.cache/nbs-cli/<package>/bootstrap/ into the unified rootfs.
     """
-    print("🗂️  Merging extracted package contents into rootfs...")
+    console.print("🔰 Merging extracted package contents into rootfs...")
     for pkg_dir in cache_dir.iterdir():
         src = pkg_dir / "bootstrap"
         if src.exists():
             shutil.copytree(src, rootfs_path, dirs_exist_ok=True)
-            print(f"✅ Merged: {src}")
+            console.print(f"[green]✅ Merged:[/green] {src}")
         else:
-            print(f"⚠️  Skipped missing: {src}")
+            console.print("")
+            console.print(f"[yellow]🚧 Skipped missing:[/yellow] {src}")
+    console.print("")
